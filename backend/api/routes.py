@@ -3,6 +3,7 @@ FastAPI routes for NBA prediction API
 """
 
 import logging
+import os
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
 from typing import Optional, Dict
 from datetime import datetime
@@ -29,15 +30,42 @@ async def health_check():
     return HealthResponse()
 
 
+@router.get("/debug/info")
+async def debug_info():
+    """Debug endpoint to check service state"""
+    try:
+        service = get_prediction_service()
+        ratings = service.elo.get_all_ratings()
+        
+        return {
+            "data_dir": service.data_dir,
+            "ratings_file": os.path.join(service.data_dir, 'elo_ratings.json'),
+            "file_exists": os.path.exists(os.path.join(service.data_dir, 'elo_ratings.json')),
+            "teams_count": len(ratings),
+            "teams": list(ratings.keys()) if ratings else [],
+            "ratings": ratings
+        }
+    except Exception as e:
+        logger.error(f"Error in debug endpoint: {e}", exc_info=True)
+        return {"error": str(e)}
+
+
 @router.get("/teams", response_model=TeamsResponse)
 async def get_teams():
     """Get all teams with ELO ratings"""
     try:
+        logger.info("Getting teams from prediction service...")
         service = get_prediction_service()
+        logger.info(f"Service data_dir: {service.data_dir}")
         teams = service.get_all_teams()
+        logger.info(f"Retrieved {len(teams)} teams")
+        if len(teams) == 0:
+            logger.warning("No teams found! ELO ratings may not be loaded.")
+            ratings = service.elo.get_all_ratings()
+            logger.info(f"ELO system has {len(ratings)} teams in memory")
         return TeamsResponse(teams=teams, count=len(teams))
     except Exception as e:
-        logger.error(f"Error getting teams: {e}")
+        logger.error(f"Error getting teams: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

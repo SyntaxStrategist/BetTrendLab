@@ -52,15 +52,50 @@ class PredictionService:
         
         # Load existing ratings
         ratings_file = os.path.join(self.data_dir, 'elo_ratings.json')
+        logger.info(f"Looking for ELO ratings file at: {ratings_file}")
+        logger.info(f"File exists: {os.path.exists(ratings_file)}")
+        
         if os.path.exists(ratings_file):
             try:
                 self.elo.load_ratings(ratings_file)
-                logger.info(f"Loaded ELO ratings from {ratings_file}")
-                logger.info(f"Loaded {len(self.elo.get_all_ratings())} teams")
+                num_teams = len(self.elo.get_all_ratings())
+                logger.info(f"Successfully loaded ELO ratings from {ratings_file}")
+                logger.info(f"Loaded {num_teams} teams")
             except Exception as e:
-                logger.error(f"Error loading ratings: {e}")
+                logger.error(f"Error loading ratings from {ratings_file}: {e}", exc_info=True)
+                self._initialize_default_teams()
         else:
             logger.warning(f"ELO ratings file not found at {ratings_file}")
+            logger.info("Initializing default teams...")
+            self._initialize_default_teams()
+    
+    def _initialize_default_teams(self):
+        """Initialize default NBA teams with default ELO ratings"""
+        default_teams = {
+            "Miami Heat": 1512.99,
+            "Milwaukee Bucks": 1456.09,
+            "Boston Celtics": 1517.73,
+            "Philadelphia 76ers": 1498.67,
+            "Phoenix Suns": 1507.00,
+            "Denver Nuggets": 1515.39,
+            "Los Angeles Lakers": 1521.34,
+            "Dallas Mavericks": 1437.34,
+            "Golden State Warriors": 1507.48,
+            "Brooklyn Nets": 1525.97
+        }
+        
+        for team, rating in default_teams.items():
+            self.elo.set_rating(team, rating)
+        
+        logger.info(f"Initialized {len(default_teams)} default teams")
+        
+        # Try to save the ratings
+        try:
+            ratings_file = os.path.join(self.data_dir, 'elo_ratings.json')
+            self.elo.save_ratings(ratings_file)
+            logger.info(f"Saved default ratings to {ratings_file}")
+        except Exception as e:
+            logger.warning(f"Could not save ratings to {ratings_file}: {e}")
     
     def get_all_teams(self) -> List[Dict[str, float]]:
         """Get all teams with their ELO ratings"""
