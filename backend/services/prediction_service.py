@@ -7,6 +7,7 @@ import logging
 from typing import Dict, List, Optional
 import pandas as pd
 from datetime import datetime
+from pathlib import Path
 
 from backend.core.elo_ratings import ELORatingSystem
 from backend.core.poisson_model import PoissonScoringModel
@@ -16,18 +17,32 @@ from backend.core.data_scraper import DataManager
 logger = logging.getLogger(__name__)
 
 
+def get_project_root() -> Path:
+    """Get the project root directory"""
+    # Go up from backend/services/prediction_service.py to project root
+    current_file = Path(__file__).resolve()
+    # backend/services/prediction_service.py -> backend/services -> backend -> project root
+    return current_file.parent.parent.parent
+
+
 class PredictionService:
     """Service for managing predictions and models"""
     
-    def __init__(self, data_dir: str = "data"):
+    def __init__(self, data_dir: Optional[str] = None):
         """
         Initialize prediction service
         
         Args:
-            data_dir: Directory to store data files
+            data_dir: Directory to store data files (defaults to project_root/data)
         """
-        self.data_dir = data_dir
-        os.makedirs(data_dir, exist_ok=True)
+        if data_dir is None:
+            # Use absolute path to project root/data
+            project_root = get_project_root()
+            self.data_dir = str(project_root / "data")
+        else:
+            self.data_dir = data_dir
+        
+        os.makedirs(self.data_dir, exist_ok=True)
         
         # Initialize components
         self.elo = ELORatingSystem()
@@ -36,13 +51,16 @@ class PredictionService:
         self.data_manager = DataManager()
         
         # Load existing ratings
-        ratings_file = os.path.join(data_dir, 'elo_ratings.json')
+        ratings_file = os.path.join(self.data_dir, 'elo_ratings.json')
         if os.path.exists(ratings_file):
             try:
                 self.elo.load_ratings(ratings_file)
                 logger.info(f"Loaded ELO ratings from {ratings_file}")
+                logger.info(f"Loaded {len(self.elo.get_all_ratings())} teams")
             except Exception as e:
                 logger.error(f"Error loading ratings: {e}")
+        else:
+            logger.warning(f"ELO ratings file not found at {ratings_file}")
     
     def get_all_teams(self) -> List[Dict[str, float]]:
         """Get all teams with their ELO ratings"""
