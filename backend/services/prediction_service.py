@@ -234,7 +234,7 @@ class PredictionService:
                 predictions.append({
                     "homeTeam": home_team,
                     "awayTeam": away_team,
-                    "gameTime": game.get('time'),
+                    "gameTime": game.get('time', ''),
                     "homeWinProbability": prediction['homeWinProbability'],
                     "awayWinProbability": prediction['awayWinProbability'],
                     "predictedScore": prediction['predictedScore'],
@@ -251,10 +251,26 @@ class PredictionService:
         Update ELO ratings with new game results
         
         Args:
-            games_df: DataFrame with game results
+            games_df: DataFrame with game results (from balldontlie API)
         """
         try:
             logger.info(f"Updating ELO ratings with {len(games_df)} games")
+            
+            # Normalize column names - balldontlie already provides correct format
+            # but ensure we have the required columns
+            required_cols = ['home_team', 'away_team', 'home_score', 'away_score']
+            if not all(col in games_df.columns for col in required_cols):
+                logger.warning(f"Missing required columns. Available: {games_df.columns.tolist()}")
+                # Try to map common variations
+                if 'home_team' not in games_df.columns and 'HOME_TEAM' in games_df.columns:
+                    games_df['home_team'] = games_df['HOME_TEAM']
+                if 'away_team' not in games_df.columns and 'AWAY_TEAM' in games_df.columns:
+                    games_df['away_team'] = games_df['AWAY_TEAM']
+                if 'home_score' not in games_df.columns and 'HOME_SCORE' in games_df.columns:
+                    games_df['home_score'] = games_df['HOME_SCORE']
+                if 'away_score' not in games_df.columns and 'AWAY_SCORE' in games_df.columns:
+                    games_df['away_score'] = games_df['AWAY_SCORE']
+            
             self.elo.process_game_history(games_df)
             self.poisson_model.calculate_team_ratings(games_df)
             
@@ -263,7 +279,7 @@ class PredictionService:
             self.elo.save_ratings(ratings_file)
             logger.info(f"Saved ELO ratings to {ratings_file}")
         except Exception as e:
-            logger.error(f"Error updating ELO ratings: {e}")
+            logger.error(f"Error updating ELO ratings: {e}", exc_info=True)
             raise
     
     def force_update_stats_and_elo(self) -> Dict:
