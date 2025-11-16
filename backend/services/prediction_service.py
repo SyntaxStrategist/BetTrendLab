@@ -240,14 +240,8 @@ class PredictionService:
                     "teams_updated": len(self.elo.get_all_ratings())
                 }
             else:
-                # If no recent games found, try to get team stats to update offensive/defensive ratings
-                logger.info("No recent games found, updating team stats only")
-                team_stats = self.data_manager.get_team_stats()
-                
-                if not team_stats.empty:
-                    # Create sample games from stats for rating calculation
-                    # This is a fallback - ideally we'd have actual game results
-                    logger.info("Team stats retrieved, but game results needed for ELO update")
+                # If no recent games found, return partial status
+                logger.info("No recent games found, ELO ratings unchanged")
                 
                 return {
                     "status": "partial",
