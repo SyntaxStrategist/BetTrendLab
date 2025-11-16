@@ -157,12 +157,12 @@ export default function ValueBetPage() {
 
             <div className="space-y-2">
               <Label htmlFor="homeTeam">Home Team (Optional)</Label>
-              <Select value={homeTeam} onValueChange={setHomeTeam}>
+              <Select value={homeTeam || "auto"} onValueChange={(value) => setHomeTeam(value === "auto" ? "" : value)}>
                 <SelectTrigger id="homeTeam">
                   <SelectValue placeholder="Auto (Team 1)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Auto (Team 1)</SelectItem>
+                  <SelectItem value="auto">Auto (Team 1)</SelectItem>
                   {team1 && (
                     <SelectItem key={team1} value={team1}>
                       {team1}

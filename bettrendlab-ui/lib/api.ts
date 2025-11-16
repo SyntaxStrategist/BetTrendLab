@@ -85,6 +85,13 @@ export interface TodaysGamesResponse {
   count: number;
 }
 
+export interface UpdateResponse {
+  status: string;
+  message: string;
+  games_processed?: number;
+  teams_updated?: number;
+}
+
 // API functions
 export const api = {
   // Get all teams
@@ -150,6 +157,12 @@ export const api = {
   // Health check
   healthCheck: async (): Promise<{ status: string }> => {
     const response = await apiClient.get('/health');
+    return response.data;
+  },
+
+  // Force update stats and ELO ratings
+  updateData: async (): Promise<UpdateResponse> => {
+    const response = await apiClient.post<UpdateResponse>('/api/v1/update');
     return response.data;
   },
 };
